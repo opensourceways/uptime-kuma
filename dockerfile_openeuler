@@ -1,0 +1,42 @@
+############################################
+# Build in Golang
+# Build in Node.js
+############################################
+FROM openeuler/openeuler:23.09 AS build
+RUN yum install -y golang && go env -w GOPROXY=https://goproxy.cn,direct
+RUN yum install -y nodejs && npm config set registry https://registry.npmmirror.com
+RUN yum install -y g++ sqlite sqlite-devel make
+
+WORKDIR /app
+ENV PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=1
+
+COPY . /app
+
+RUN chmod +x ./extra/build-healthcheck.js && node ./extra/build-healthcheck.js "openEuler"
+RUN npm install && npm run build
+
+
+############################################
+# ⭐ Main Image
+############################################
+FROM openeuler/openeuler:23.09 AS release
+
+RUN yum install -y shadow wget nodejs && groupadd -g 1000 node && useradd -r -u 1000 -g node node
+RUN wget -O /usr/local/bin/dumb-init https://github.com/Yelp/dumb-init/releases/download/v1.2.5/dumb-init_1.2.5_x86_64
+RUN chmod +x /usr/local/bin/dumb-init
+
+USER node
+WORKDIR /app
+
+LABEL org.opencontainers.image.source="https://github.com/louislam/uptime-kuma"
+
+ENV UPTIME_KUMA_HOST=0.0.0.0
+
+COPY --chown=node:node --from=build /app /app
+
+EXPOSE 3001
+HEALTHCHECK --interval=60s --timeout=30s --start-period=180s --retries=5 CMD extra/healthcheck
+ENTRYPOINT ["/usr/local/bin/dumb-init", "--"]
+CMD ["node", "server/server.js"]
+
+

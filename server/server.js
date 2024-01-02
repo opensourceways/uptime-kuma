@@ -919,6 +919,7 @@ let needSetup = false;
                     SELECT *
                     FROM heartbeat
                     WHERE monitor_id = ?
+                      AND status = 0
                       AND time > ${sqlHourOffset}
                     ORDER BY time ASC
                 `, [

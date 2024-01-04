@@ -3,7 +3,6 @@
 # Build in Node.js
 ############################################
 FROM openeuler/openeuler:23.09 AS build
-RUN yum install -y golang && go env -w GOPROXY=https://goproxy.cn,direct
 RUN yum install -y nodejs && npm config set registry https://registry.npmmirror.com
 RUN yum install -y g++ sqlite sqlite-devel make
 
@@ -12,7 +11,6 @@ ENV PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=1
 
 COPY . /app
 
-RUN chmod +x ./extra/build-healthcheck.js && node ./extra/build-healthcheck.js "openEuler"
 RUN npm install && npm run build
 
 
@@ -35,7 +33,6 @@ ENV UPTIME_KUMA_HOST=0.0.0.0
 COPY --chown=node:node --from=build /app /app
 
 EXPOSE 3001
-HEALTHCHECK --interval=60s --timeout=30s --start-period=180s --retries=5 CMD extra/healthcheck
 ENTRYPOINT ["/usr/local/bin/dumb-init", "--"]
 CMD ["node", "server/server.js"]
 
